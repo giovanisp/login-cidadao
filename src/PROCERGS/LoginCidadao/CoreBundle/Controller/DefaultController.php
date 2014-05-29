@@ -196,7 +196,43 @@ class DefaultController extends Controller
         }
 
         $response = new JsonResponse();
+        $userAgent = $this->getRequest()->headers->get('User-Agent');
+        if (preg_match('/(?i)msie [1-9]/', $userAgent)) {
+            $response->headers->set('Content-Type', 'text/json');
+        }
         return $response->setData($result);
+    }
+
+    /**
+     * @Route("/jobs/polulate", name="lc_job_populate")
+     * @Template()
+     */
+    public function populaAction()
+    {
+        ini_set('display_erros', 1);
+        ini_set('error_reporting', E_ALL);
+        ini_set('memory_limit','9999M');
+        $userManager = $this->container->get('fos_user.user_manager');
+        $em = $this->getDoctrine()->getEntityManager();
+        foreach (range(1, 28) as $val) {
+            if (($handle = fopen('c:\temp\file_'.$val.'.csv', "r")) !== FALSE) {
+                $data = fgetcsv($handle, 1000, ",");
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    $user = $userManager->createUser();
+                    $n = explode(' ', utf8_encode($data[3]));
+                    $user->setFirstName(array_shift($n));
+                    $user->setSurName(implode(' ', $n));
+                    $user->setEmail($data[4]);
+                    $user->setPassword($data[5]);
+                    $user->setEnabled(true);
+                    $userManager->updateUser($user);
+                }
+                fclose($handle);
+                $em->flush();
+                $em->clear();
+            }
+        }
+        return new JsonResponse(array('ok'=> 'ok'));
     }
 
 }
