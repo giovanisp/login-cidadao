@@ -62,87 +62,6 @@ class DefaultController extends Controller
     }
 
     /**
-     * @Route("/lc_consultaCep", name="lc_consultaCep")
-     * @Template()
-     */
-    public function consultaCepAction(Request $request)
-    {
-        // $cep = new \PROCERGS\LoginCidadao\CoreBundle\Entity\Cep();
-        $repoUf = $this->getDoctrine()->getEntityManager()->getRepository('PROCERGSLoginCidadaoCoreBundle:Uf');
-        $q = $repoUf->createQueryBuilder('u')->orderBy('u.acronym');
-        $p = $repoUf->findBy(array('acronym' => 'RS'));
-        $form = $this->createFormBuilder()->add('adress', 'text',
-                        array(
-                    'required' => true,
-                    'label' => 'form.adress',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('adressnumber', 'text',
-                        array(
-                    'required' => false,
-                    'label' => 'form.adressnumber',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('city', 'text',
-                        array(
-                    'required' => true,
-                    'label' => 'form.city',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('uf', 'entity',
-                        array(
-                    'class' => 'PROCERGSLoginCidadaoCoreBundle:Uf',
-                    'property' => 'name',
-                    'required' => true,
-                    'label' => 'form.uf',
-                    'preferred_choices' => $p,
-                    'query_builder' => $q,
-                    'translation_domain' => 'FOSUserBundle'
-                        )
-                )->getForm();
-        $form->handleRequest($request);
-        if ($form->isValid()) {
-            $busca = $this->get('procergs_logincidadao.dne');
-            $ceps = $busca->find(array(
-                'logradouro' => $form->get('adress')->getData(),
-                'localidade' => $form->get('city')->getData(),
-                'numero' => $form->get('adressnumber')->getData(),
-                'uf' => $form->get('uf')->getData()->getAcronym()
-            ));
-        } else {
-            $ceps = array();
-        }
-        return array(
-            'form' => $form->createView(),
-            'ceps' => $ceps
-        );
-    }
-
-    /**
-     * @Route("/lc_consultaCep2", name="lc_consultaCep2")
-     */
-    public function consultaCep2Action(Request $request)
-    {
-        $busca = $this->get('procergs_logincidadao.dne');
-        $ceps = $busca->findByCep($request->get('cep'));
-        if ($ceps) {
-            $result = array(
-                'code' => 0,
-                'msg' => null,
-                'itens' => array(
-                    $ceps
-                )
-            );
-        } else {
-            $result = array(
-                'code' => 1,
-                'msg' => 'not found'
-            );
-        }
-        return new Response(json_encode($result), 200,
-                array(
-            'Content-Type' => 'application/json'
-        ));
-    }
-
-    /**
      * @Route("/help", name="lc_help")
      * @Template()
      */
@@ -201,38 +120,6 @@ class DefaultController extends Controller
             $response->headers->set('Content-Type', 'text/json');
         }
         return $response->setData($result);
-    }
-
-    /**
-     * @Route("/jobs/polulate", name="lc_job_populate")
-     * @Template()
-     */
-    public function populaAction()
-    {
-        ini_set('display_erros', 1);
-        ini_set('error_reporting', E_ALL);
-        ini_set('memory_limit','9999M');
-        $userManager = $this->container->get('fos_user.user_manager');
-        $em = $this->getDoctrine()->getEntityManager();
-        foreach (range(1, 28) as $val) {
-            if (($handle = fopen('c:\temp\file_'.$val.'.csv', "r")) !== FALSE) {
-                $data = fgetcsv($handle, 1000, ",");
-                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                    $user = $userManager->createUser();
-                    $n = explode(' ', utf8_encode($data[3]));
-                    $user->setFirstName(array_shift($n));
-                    $user->setSurName(implode(' ', $n));
-                    $user->setEmail($data[4]);
-                    $user->setPassword($data[5]);
-                    $user->setEnabled(true);
-                    $userManager->updateUser($user);
-                }
-                fclose($handle);
-                $em->flush();
-                $em->clear();
-            }
-        }
-        return new JsonResponse(array('ok'=> 'ok'));
     }
 
 }
