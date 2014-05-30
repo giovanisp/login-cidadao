@@ -1,10 +1,6 @@
 {% extends 'PROCERGSLoginCidadaoCoreBundle::base.html.twig' %}
 
 {% block body %}
-{% if uri_vpr_link is defined and uri_vpr_link is not empty %}
-<a href="{{ uri_vpr_link }}" target="_blank" class="alert alert-success center-block">A Votação de Prioridades já está disponível, vote aqui!</a>
-{% endif %}
-
 {% for flashMessage in app.session.flashbag.get('success') %}
     <div class="alert alert-success">
         {{ flashMessage }}
@@ -70,7 +66,7 @@
                             <i class="glyphicon glyphicon-th pull-right"></i>
                         </span></a>
                 </li>
-
+                
                 {% endif %}
                 {# <li class="settings glyph">
                     <a href="">
@@ -113,6 +109,6 @@
 {% block javascripts %}
 {{ parent() }}
     <script type="text/javascript">
-        validator.cep.urlQuery = '{{ path('lc_consultaCep2') }}';
+        validador.cep.urlQuery = '{{ path('lc_consultaCep2') }}';
     </script>
 {% endblock %}

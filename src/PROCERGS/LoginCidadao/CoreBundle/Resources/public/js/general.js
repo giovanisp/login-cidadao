@@ -1,3 +1,5 @@
+var pageWidth;
+
 if (typeof String.prototype.repeat !== 'function') {
     String.prototype.repeat = function( num ) {
         return new Array( num + 1 ).join( this );
@@ -42,10 +44,8 @@ var QueryString = function () {
       }
         return query_string;
     } ();
-
-var validator = {};
-
-validator.isValidCpf = function(cpf)
+var validador = {};
+validador.isValidCpf = function (cpf)
 {
     var checkRepeat = new RegExp('([0-9])\\1{10}', 'g');
     var cleanup = new RegExp('[. \\-]', 'gi');
@@ -76,8 +76,7 @@ validator.isValidCpf = function(cpf)
     }
     return true;
 };
-
-validator.formatCPF = function(element, cpf)
+validador.formatCPF = function (element, cpf)
 {
     if ($.isNumeric(cpf) && cpf.length === 11) {
         var cpfRegex = new RegExp('([0-9]{3})([0-9]{3})([0-9]{3})([0-9]{2})', 'gi');
@@ -85,8 +84,7 @@ validator.formatCPF = function(element, cpf)
         element.val(cpf).data('masked', true);
     }
 };
-
-validator.onKeyUpMultiformat = function(obj, e)
+validador.onKeyUpMultiformat = function (obj, e)
 {
     var c= String.fromCharCode(e.which);
     var isWordcharacter = c.match(/\w/);
@@ -99,7 +97,7 @@ validator.onKeyUpMultiformat = function(obj, e)
 
 
     if (!isWordcharacter && e.keyCode !== 0) {
-        validator.formatCPF($(obj), cpf);
+        validador.formatCPF($(obj), cpf);
         return;
     }
 
@@ -107,7 +105,7 @@ validator.onKeyUpMultiformat = function(obj, e)
         if (cpf.length > 11) {
             cpf = cpf.substr(0,11);
         }
-        validator.formatCPF($(obj), cpf);
+        validador.formatCPF($(obj), cpf);
     } else {
         if (masked === true) {
             val = val.replace(/([0-9]{3})[.]([0-9]{3})[.]([0-9]{3})-([0-9]{2})/, '$1$2$3$4');
@@ -117,46 +115,44 @@ validator.onKeyUpMultiformat = function(obj, e)
 
     return false;
 };
-
-validator.cep = {'parent': validator};
-validator.cep.urlQuery = '/lc_consultaCep2';
-validator.cep.findByCep = function(obj, callback) {
-    if (obj.value === '') {
-        validator.check.success(obj);
+validador.cep = { 'parent': validador };
+validador.cep.urlQuery = '/lc_consultaCep2';
+validador.cep.findByCep = function (obj, callback) {
+    //console.trace();
+    if (obj.value == '') {
+      validador.check.success(obj);
       return;
     }
     var cleanup = new RegExp('[. \\-]', 'gi');
     var val = obj.value.replace(cleanup, '');
-    if (val === '' || val.length !== 8) {
-        validator.check.error(obj, $('label[for=' + obj.id + ']').text() + ' invalido');
+    if (val == '' || val.length != 8) {
+        validador.check.error(obj, $('label[for='+obj.id+']').text() +' invalido');
         return;
     }
      $.ajax({
          type: "GET",
          dataType: "json",
-        url: validator.cep.urlQuery + '/' + val
-    }).done(function(result) {
-        if (result.code !== 200) {
-            return this.fail(result);
+         url: validador.cep.urlQuery,
+         data: {'cep' : val },
+         success : function (data1, textStatus, jqXHR) {
+             if (data1.code > 0) {
+                 validador.check.error(obj, $('label[for='+obj.id+']').text() +' invalido');
+                 return;
              }
-        if (result.items && result.items.length && callback) {
-            callback(result.items[0]);
+             if (data1.itens && data1.itens.length && callback) {
+                 callback(data1.itens[0]);
              }
-        validator.check.success(obj);
-    }).fail(function(result) {
-        if (result.code !== 200) {
-            validator.check.error(obj, $('label[for=' + obj.id + ']').text() + ' invalido');
-            return;
+             validador.check.success(obj);
          }
      });
 };
-validator.cep.popupConsult = function(obj, evt, callback) {
+validador.cep.popupConsult = function (obj, evt, callback) {
     var url = $(obj).attr('href') + '?callback='+callback;
     window.open(url, '', "width=600,height=450");
 };
 
-validator.mask = {'parent': validator};
-validator.mask.int = function(e) {
+validador.mask = { 'parent': validador };
+validador.mask.int = function (e){
     var charCode = e.which || e.keyCode;
     if ((charCode < 48 || charCode > 57) && (charCode != 8 && charCode != 46)) {
         e.returnValue = false;
@@ -164,7 +160,7 @@ validator.mask.int = function(e) {
     }
     return true;
 };
-validator.mask.format = function(obj, mask, e) {
+validador.mask.format = function(obj, mask, e) {
     var masked;
     var numerics = obj.value.toString().replace(/\-|\.|\/|\(|\)| /g, "");
     var pos = 0;
@@ -193,8 +189,8 @@ validator.mask.format = function(obj, mask, e) {
     }
 };
 
-validator.check = {'parent': validator};
-validator.check.mobile = function(obj, e) {
+validador.check = { 'parent': validador };
+validador.check.mobile = function (obj, e){
     if (obj.value.length) {
         var cel = obj.value.toString().replace(/\-|\.|\/|\(|\)| /g, "");
         if(cel.lengh < 8 || !$.isNumeric(cel)) {
@@ -205,7 +201,7 @@ validator.check.mobile = function(obj, e) {
     this.success(obj);
     return true;
 };
-validator.check.cep = function(obj, e) {
+validador.check.cep = function (obj, e){
     if (obj.value.length) {
         var exp = /\d{2}\.\d{3}\-\d{3}/;
         if(!exp.test(obj.value)) {
@@ -217,7 +213,7 @@ validator.check.cep = function(obj, e) {
     return true;
 
 };
-validator.check.cpf = function(obj, e) {
+validador.check.cpf = function (obj, e) {
     if (obj.value.length) {
         if(!this.parent.isValidCpf(obj.value))    {
             this.error(obj, $('label[for='+obj.id+']').text() + ' invalido!');
@@ -227,23 +223,50 @@ validator.check.cpf = function(obj, e) {
     this.success(obj);
     return true;
 };
-validator.check.error = function(obj, msg) {
+validador.check.error = function (obj, msg) {
     var parent = $(obj).parent();
     parent.addClass('has-error has-feedback');
     parent.find('.input-error').html('<ul><li>'+msg+'</li></ul>');
 };
-validator.check.success = function(obj) {
+validador.check.success = function (obj) {
     var parent = $(obj).parent();
     parent.removeClass('has-error has-feedback');
     parent.find('.input-error').html('');
 };
 
-function zeroPadding(str, size) {
-    str = str.toString();
-    return str.length < size ? zeroPadding("0" + str, size) : str;
+function completaZerosEsquerda(numero, tamanho) {
+  var ret = "";
+  if (numero.length > 0) {
+    var qtdCompleta = tamanho - numero.length;
+    var zeros = "";
+    for (var i = 0; i < qtdCompleta; i++) {
+      zeros += "0";
     }
-function checkVoterRegistration(inscricao) {
+    ret = zeros + numero;
+  }
+  return ret;
+}
+function somenteNumeros(e) {
+  if (window.event) {
+    // for IE, e.keyCode or window.event.keyCode can be used
+    key = e.keyCode;
+  } else {
+    if (e.which) {
+      // netscape
+      key = e.which;
+    } else {
+      key = 9;
+    }
+  }
+  if (!isNum(key)) {
+    return false;
+  } else {
+    return true;
+  }
+}
+function validarTitulo(inscricao) {
   var paddedInsc = inscricao;
+  // alert("validando inscricao " + paddedInsc);
   var dig1 = 0;
   var dig2 = 0;
   var tam = paddedInsc.length;
