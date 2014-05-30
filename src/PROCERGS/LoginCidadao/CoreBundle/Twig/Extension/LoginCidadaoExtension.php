@@ -26,12 +26,7 @@ class LoginCidadaoExtension extends \Twig_Extension
     public function getFunctions()
     {
         return array(
-            'lc_getForm' => new \Twig_Function_Method($this, 'getForm', array(
-                'is_safe' => array(
-                    'html'
-                )
-            )),
-            'lc_getFormFactory' => new \Twig_Function_Method($this, 'getFormFactory', array(
+            'logincidadao_initializeForm' => new \Twig_Function_Method($this, 'initializeForm', array(
                 'is_safe' => array(
                     'html'
                 )
@@ -75,13 +70,13 @@ class LoginCidadaoExtension extends \Twig_Extension
         return 'login_twig_extension';
     }
 
-    public function getForm($name = 'procergs_logincidadao.login.form.type')
+    /**
+     *
+     * @see FacebookHelper::initialize()
+     */
+    public function initializeForm($parameters = array(), $name = null)
     {
-        return $this->container->get('form.factory')->create($this->container->get($name))->createView();
-    }
-    
-    public function getFormFactory($name = 'fos_user.registration.form.factory')
-    {
-        return $this->container->get($name)->createForm()->createView();
+        $form = $this->container->get('form.factory')->create($this->container->get('procergs_logincidadao.login.form.type'));
+        return $form->createView();
     }
 }
