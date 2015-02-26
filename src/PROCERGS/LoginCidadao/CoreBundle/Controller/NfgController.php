@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use PROCERGS\LoginCidadao\CoreBundle\Form\Type\ContactFormType;
 use PROCERGS\LoginCidadao\CoreBundle\Entity\SentEmail;
-use PROCERGS\LoginCidadao\CoreBundle\Entity\Uf;
+use PROCERGS\LoginCidadao\CoreBundle\Entity\State;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use PROCERGS\LoginCidadao\CoreBundle\Exception\NfgException;
 use FOS\UserBundle\Event\FormEvent;
@@ -17,7 +17,7 @@ use FOS\UserBundle\FOSUserEvents;
 use FOS\UserBundle\Event\FilterUserResponseEvent;
 use FOS\UserBundle\Event\GetResponseUserEvent;
 use PROCERGS\LoginCidadao\CoreBundle\Entity\NfgProfile;
-use PROCERGS\LoginCidadao\CoreBundle\Entity\Notification;
+use PROCERGS\LoginCidadao\NotificationBundle\Entity\Notification;
 
 /**
  * @Route("/nfg")
@@ -81,15 +81,7 @@ class NfgController extends Controller
                         $otherPerson->setNfgProfile(null);
                         //@TODO do no use updateUser
                         $this->container->get('fos_user.user_manager')->updateUser($otherPerson);
-
-                        $notification = new Notification();
-                        $notification->setPerson($otherPerson)
-                            ->setIcon('glyphicon glyphicon-exclamation-sign')
-                            ->setLevel(Notification::LEVEL_IMPORTANT)
-                            ->setTitle('notification.nfg.revoked.cpf.title')
-                            ->setShortText('notification.nfg.revoked.cpf.message.short')
-                            ->setText('notification.nfg.revoked.cpf.message');
-                        $em->persist($notification);
+                        $this->container->get('notifications.helper')->revokedCpfNotification($otherPerson);
                     }
                 } else {
                     throw new NfgException('notification.nfg.already.bind', NfgException::E_BIND);
@@ -101,15 +93,7 @@ class NfgController extends Controller
                     $otherPerson->setCpf(null);
                     //@TODO do no use updateUser
                     $this->container->get('fos_user.user_manager')->updateUser($otherPerson);
-
-                    $notification = new Notification();
-                    $notification->setPerson($otherPerson)
-                        ->setIcon('glyphicon glyphicon-exclamation-sign')
-                        ->setLevel(Notification::LEVEL_IMPORTANT)
-                        ->setTitle('notification.nfg.revoked.cpf.title')
-                        ->setShortText('notification.nfg.revoked.cpf.message.short')
-                        ->setText('notification.nfg.revoked.cpf.message');
-                    $em->persist($notification);
+                    $this->container->get('notifications.helper')->revokedCpfNotification($otherPerson);
                 }
             }
         } else {
@@ -131,7 +115,7 @@ class NfgController extends Controller
     public function createBackAction(Request $request)
     {
         $result1 = $this->checkAccessToken();
-        $em = $this->getDoctrine()->getEntityManager();
+        $em = $this->getDoctrine()->getManager();
         $personRepo = $em->getRepository('PROCERGSLoginCidadaoCoreBundle:Person');
         if ($personRepo->findOneBy(array(
             'cpf' => $result1['CodCpf']
@@ -235,7 +219,7 @@ class NfgController extends Controller
             throw new NfgException('nfg.accessid.mismatch');
         }
         $cpf = str_pad($cpf, 11, "0", STR_PAD_LEFT);
-        $em = $this->getDoctrine()->getEntityManager();
+        $em = $this->getDoctrine()->getManager();
         $personRepo = $em->getRepository('PROCERGSLoginCidadaoCoreBundle:Person');
         $user = $personRepo->findOneBy(array(
             'cpf' => $cpf
@@ -273,7 +257,7 @@ class NfgController extends Controller
             return $this->redirect($this->generateUrl('lc_home'));
         }
         $result1 = $this->checkAccessToken($person->getVoterRegistration());
-        $em = $this->getDoctrine()->getEntityManager();
+        $em = $this->getDoctrine()->getManager();
         $personRepo = $em->getRepository('PROCERGSLoginCidadaoCoreBundle:Person');
 
         if ($person->getCpf()) {
@@ -283,14 +267,7 @@ class NfgController extends Controller
                 $this->checkOtherPerson($result1, $em, $personRepo);
 
                 $person->setCpf($result1['CodCpf']);
-                $notification = new Notification();
-                $notification->setPerson($otherPerson)
-                    ->setIcon('glyphicon glyphicon-exclamation-sign')
-                    ->setLevel(Notification::LEVEL_NORMAL)
-                    ->setTitle('notification.nfg.overwrite.cpf.title')
-                    ->setShortText('notification.nfg.overwrite.cpf.message.short')
-                    ->setText('notification.nfg.overwrite.cpf.message');
-                $em->persist($notification);
+                $this->container->get('notifications.helper')->overwriteCpfNotification($otherPerson);
             }
         } else {
             $this->checkOtherPerson($result1, $em, $personRepo);

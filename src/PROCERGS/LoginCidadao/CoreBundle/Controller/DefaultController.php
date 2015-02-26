@@ -10,9 +10,11 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use PROCERGS\LoginCidadao\CoreBundle\Form\Type\ContactFormType;
 use PROCERGS\LoginCidadao\CoreBundle\Entity\SentEmail;
-use PROCERGS\LoginCidadao\CoreBundle\Entity\Uf;
+use PROCERGS\LoginCidadao\CoreBundle\Entity\State;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Security\Core\User\UserInterface;
+use PROCERGS\LoginCidadao\CoreBundle\Helper\IgpWsHelper;
+use Doctrine\ORM\Query;
 
 class DefaultController extends Controller
 {
@@ -29,9 +31,9 @@ class DefaultController extends Controller
 
         $api = $this->container->get('fos_facebook.api');
         $scope = implode(',',
-                $this->container->getParameter('facebook_app_scope'));
+                         $this->container->getParameter('facebook_app_scope'));
         $callback = $this->container->get('router')->generate('_security_check_facebook',
-                array(), true);
+                                                              array(), true);
         $redirect_url = $api->getLoginUrl(array(
             'scope' => $scope,
             'redirect_uri' => $callback
@@ -58,88 +60,7 @@ class DefaultController extends Controller
     public function generalAction()
     {
         return $this->render('PROCERGSLoginCidadaoCoreBundle:Info:terms.html.twig',
-                        compact('user', 'apps'));
-    }
-
-    /**
-     * @Route("/lc_consultaCep", name="lc_consultaCep")
-     * @Template()
-     */
-    public function consultaCepAction(Request $request)
-    {
-        // $cep = new \PROCERGS\LoginCidadao\CoreBundle\Entity\Cep();
-        $repoUf = $this->getDoctrine()->getEntityManager()->getRepository('PROCERGSLoginCidadaoCoreBundle:Uf');
-        $q = $repoUf->createQueryBuilder('u')->orderBy('u.acronym');
-        $p = $repoUf->findBy(array('acronym' => 'RS'));
-        $form = $this->createFormBuilder()->add('adress', 'text',
-                        array(
-                    'required' => true,
-                    'label' => 'form.adress',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('adressnumber', 'text',
-                        array(
-                    'required' => false,
-                    'label' => 'form.adressnumber',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('city', 'text',
-                        array(
-                    'required' => true,
-                    'label' => 'form.city',
-                    'translation_domain' => 'FOSUserBundle'
-                ))->add('uf', 'entity',
-                        array(
-                    'class' => 'PROCERGSLoginCidadaoCoreBundle:Uf',
-                    'property' => 'name',
-                    'required' => true,
-                    'label' => 'form.uf',
-                    'preferred_choices' => $p,
-                    'query_builder' => $q,
-                    'translation_domain' => 'FOSUserBundle'
-                        )
-                )->getForm();
-        $form->handleRequest($request);
-        if ($form->isValid()) {
-            $busca = $this->get('procergs_logincidadao.dne');
-            $ceps = $busca->find(array(
-                'logradouro' => $form->get('adress')->getData(),
-                'localidade' => $form->get('city')->getData(),
-                'numero' => $form->get('adressnumber')->getData(),
-                'uf' => $form->get('uf')->getData()->getAcronym()
-            ));
-        } else {
-            $ceps = array();
-        }
-        return array(
-            'form' => $form->createView(),
-            'ceps' => $ceps
-        );
-    }
-
-    /**
-     * @Route("/lc_consultaCep2", name="lc_consultaCep2")
-     */
-    public function consultaCep2Action(Request $request)
-    {
-        $busca = $this->get('procergs_logincidadao.dne');
-        $ceps = $busca->findByCep($request->get('cep'));
-        if ($ceps) {
-            $result = array(
-                'code' => 0,
-                'msg' => null,
-                'itens' => array(
-                    $ceps
-                )
-            );
-        } else {
-            $result = array(
-                'code' => 1,
-                'msg' => 'not found'
-            );
-        }
-        return new Response(json_encode($result), 200,
-                array(
-            'Content-Type' => 'application/json'
-        ));
+                             compact('user', 'apps'));
     }
 
     /**
@@ -159,20 +80,31 @@ class DefaultController extends Controller
     {
         $form = $this->createForm(new ContactFormType());
         $form->handleRequest($request);
-        $message = '';
+        $translator = $this->get('translator');
+        $message = $translator->trans('contact.form.sent');
         if ($form->isValid()) {
             $email = new SentEmail();
-            $email->setType('contact-mail')->setSubject('Fale conosco - ' . $form->get('firstName')->getData())->setSender($form->get('email')->getData())->setReceiver($this->container->getParameter('mailer_receiver_mail'))->setMessage($form->get('message')->getData());
-            if ($this->get('mailer')->send($email->getSwiftMail())) {
-                $this->getDoctrine()->getEntityManager()->persist($email);
-                $this->getDoctrine()->getEntityManager()->flush();
-                $message = 'form.message.sucess';
+            $email
+                ->setType('contact-mail')
+                ->setSubject('Fale conosco - ' . $form->get('firstName')->getData())
+                ->setSender($form->get('email')->getData())
+                ->setReceiver($this->container->getParameter('mailer_receiver_mail'))
+                ->setMessage($form->get('message')->getData());
+            $mailer = $this->get('mailer');
+            $swiftMail = $email->getSwiftMail();
+            if ($mailer->send($swiftMail)) {
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($email);
+                $em->flush();
+                $this->get('session')->getFlashBag()->add('success', $message);
             }
+
+            $url = $this->generateUrl("lc_contact");
+            return $this->redirect($url);
         }
         return $this->render('PROCERGSLoginCidadaoCoreBundle:Info:contact.html.twig',
-                        array(
-                    'form' => $form->createView(),
-                    'messages' => $message
+                             array(
+                'form' => $form->createView()
         ));
     }
 
@@ -201,6 +133,63 @@ class DefaultController extends Controller
             $response->headers->set('Content-Type', 'text/json');
         }
         return $response->setData($result);
+    }
+
+    /**
+     * @Route("/login/cert", name="lc_login_cert")
+     * @Template()
+     */
+    public function loginCertAction(Request $request)
+    {
+        die(print_r($_REQUEST));
+    }
+
+    /**
+     * @Route("/igp/consult", name="lc_ipg_consutl")
+     * @Template()
+     */
+    public function igpConsultAction(Request $request)
+    {
+        $igp = $this->get('procergs_logincidadao.igpws');
+        //$rcs = $this->getDoctrine()->getRepository('PROCERGSLoginCidadaoCoreBundle:Person')->createQueryBuilder('p')->select('p.cpf')->where('p.cpf is not null')->getQuery()->getResult(Query::HYDRATE_ARRAY);
+        echo "<pre>";
+        $rcs[] = array('cpf' => '1000450741');
+        foreach ($rcs as $rc) {
+            $igp->setCpf($rc['cpf']);
+            $rc['igp'] = $igp->consultar();
+            print_r($rc);
+        }
+        die();
+    }
+
+    /**
+     * @Route("/dashboard", name="lc_dashboard")
+     * @Template()
+     */
+    public function dashboardAction()
+    {
+      // badges
+      $badgesHandler = $this->get('badges.handler');
+      $badges = $badgesHandler->getAvailableBadges();
+      $userBadges = $badgesHandler->evaluate($this->getUser())->getBadges();
+
+      // logs
+      $em = $this->getDoctrine()->getManager();
+      $logRepo = $em->getRepository('PROCERGSLoginCidadaoAPIBundle:ActionLog');
+      $logs['logins'] = $logRepo->findLoginsByPerson($this->getUser(), 3);
+      $logs['activity'] = $logRepo->getWithClientByPerson($this->getUser(), 3);
+
+      // notifications
+      $notificationHandler = $this->get('procergs.notification.handler');
+      $notifications = $notificationHandler->getUnread($this->getUser());
+
+      $defaultClientUid = $this->container->getParameter('oauth_default_client.uid');
+
+      return array('allBadges' => $badges,
+                   'userBadges' => $userBadges,
+                   'logs' => $logs,
+                   'notifications' => $notifications,
+                   'defaultClientUid' => $defaultClientUid);
     }
 
 }

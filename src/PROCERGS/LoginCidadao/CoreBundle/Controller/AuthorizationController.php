@@ -33,16 +33,19 @@ class AuthorizationController extends Controller
                 $apps[] = $app;
             }
         }
+
         $sugg = new ClientSuggestion();
         $formBuilder = $this->createFormBuilder($sugg);
         $formBuilder->add('text', 'textarea');
         $form = $formBuilder->getForm();
 
-        $em = $this->getDoctrine()->getEntityManager();
         $suggs = $em->getRepository('PROCERGSLoginCidadaoCoreBundle:ClientSuggestion')->findBy(array('person' => $user),
                 array('createdAt' => 'desc'), 6);
         $form = $form->createView();
-        return compact('user', 'apps', 'form', 'suggs');
+
+        $defaultClientUid = $this->container->getParameter('oauth_default_client.uid');
+
+        return compact('user', 'apps', 'form', 'suggs', 'defaultClientUid');
     }
 
 }
